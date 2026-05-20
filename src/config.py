@@ -221,6 +221,9 @@ class Config:
     QUALITY_HIGH_THRESHOLD = _get_float("QUALITY_HIGH_THRESHOLD", default=0.75)
     QUALITY_MEDIUM_THRESHOLD = _get_float("QUALITY_MEDIUM_THRESHOLD", default=0.55)
 
+    POSTGRES_URL = _get_env("POSTGRES_URL", "DATABASE_URL")
+    CHAT_HISTORY_ENABLED = _get_bool("CHAT_HISTORY_ENABLED", default=True)
+
     TEXT_TARGET_WORDS = _get_float("TEXT_TARGET_WORDS", default=80.0)
     TABLE_TARGET_WORDS = _get_float("TABLE_TARGET_WORDS", default=60.0)
     TEXT_UNIQUE_RATIO_TARGET = _get_float("TEXT_UNIQUE_RATIO_TARGET", default=0.55)

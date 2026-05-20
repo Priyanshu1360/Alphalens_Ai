@@ -51,6 +51,17 @@ python ask.py "Summarize Amazon revenue trend in 2024 with key drivers and cite 
 python evaluate.py --limit 3
 ```
 
+5. API server (health, ingest, query, agent-query):
+
+```bash
+uvicorn api:app --host 0.0.0.0 --port 8000
+```
+
+Optional chat history storage in PostgreSQL:
+- Set `POSTGRES_URL` (or `DATABASE_URL`) in `.env`
+- Keep `CHAT_HISTORY_ENABLED=true`
+- Use `GET /chat-history` to view persisted items
+
 ## Notes
 
 - Keep `.env` private and rotate leaked keys.
