@@ -2,3 +2,10 @@
 __pycache__/
 *.pyc
 qdrant_local/
+Data/
+venv/
+frontend/node_modules/
+frontend/.next/
+*.log
+logs_time.txt
+regex_test.txt

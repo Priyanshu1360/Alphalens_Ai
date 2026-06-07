@@ -1,0 +1,16 @@
+# Project Configuration Options
+# Currently, the application loads its dynamic configuration from .env and src/utils/config.py
+# This file is present to match the structural architecture requirements.
+
+models:
+  llm: "llama-3.3-70b-versatile"
+  grader_llm_model: "llama-3.1-8b-instant"
+  embedding: "FinLang/finance-embeddings-investopedia"
+
+chunking:
+  text_chunk_size: 300
+  text_chunk_overlap: 50
+
+vectordb:
+  backend: "qdrant"
+  distance: "COSINE"
