@@ -153,52 +153,6 @@ python evaluate.py --limit 3
 ---
 
 ## 🏗️ System Architecture Workflow
+<img width="1536" height="1024" alt="Architecture_version_@2" src="https://github.com/user-attachments/assets/c394682a-f3f8-4bd4-8bad-5f33d4564c25" />
 
-```mermaid
-graph TD
-    classDef user fill:#2C3E50,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef security fill:#E74C3C,stroke:#C0392B,stroke-width:2px,color:#fff;
-    classDef router fill:#F39C12,stroke:#D35400,stroke-width:2px,color:#fff;
-    classDef retrieval fill:#3498DB,stroke:#2980B9,stroke-width:2px,color:#fff;
-    classDef generate fill:#2ECC71,stroke:#27AE60,stroke-width:2px,color:#fff;
-    classDef reflect fill:#9B59B6,stroke:#8E44AD,stroke-width:2px,color:#fff;
-    classDef cache fill:#1ABC9C,stroke:#16A085,stroke-width:2px,color:#fff;
 
-    User([User Query]) ::: user
-    Guardrails["🛡️ Guardrails AI<br>PII Masking & Prompt Injection Block"] ::: security
-    User --> Guardrails
-    
-    SemanticCache{"⚡ Semantic Cache"} ::: cache
-    Guardrails --> SemanticCache
-    SemanticCache -- "Cache Hit" --> Output([Final Answer]) ::: user
-    
-    Router{"🛣️ Intent Classifier"} ::: router
-    SemanticCache -- "Cache Miss" --> Router
-    
-    ConvLLM["💬 Conversational LLM"] ::: generate
-    Router -- "Casual Chat" --> ConvLLM
-    ConvLLM --> Output([Final Answer]) ::: user
-    
-    HybridSearch["🔍 Hybrid Retrieval<br>Qdrant"] ::: retrieval
-    Router -- "Financial Query" --> HybridSearch
-    
-    CrossEncoder["📊 Cross-Encoder Reranker"] ::: retrieval
-    HybridSearch --> CrossEncoder
-    
-    DocGrader{"🤔 Grade Documents"} ::: reflect
-    CrossEncoder --> DocGrader
-    
-    Rewrite["✍️ Rewrite Query"] ::: reflect
-    DocGrader -- "Irrelevant" --> Rewrite
-    Rewrite --> HybridSearch
-    
-    Generate["🧠 LLM Generation"] ::: generate
-    DocGrader -- "Relevant" --> Generate
-    
-    GenGrader{"🧐 Grade Generation"} ::: reflect
-    Generate --> GenGrader
-    
-    GenGrader -- "Failed" --> Rewrite
-    GenGrader -- "Passed" --> Output
-    Rewrite -.->|Safety Valve| Generate
-```
