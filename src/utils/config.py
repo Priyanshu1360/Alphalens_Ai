@@ -156,6 +156,7 @@ class Config:
     LOCAL_EMBEDDING_DIMENSION = _get_int("LOCAL_EMBEDDING_DIMENSION", default=1536)
     SPARSE_HASH_SPACE = _get_int("SPARSE_HASH_SPACE", default=2000003)
     SPARSE_BACKEND = _get_env("SPARSE_BACKEND", default="bm25")
+    SPARSE_MODEL = _get_env("SPARSE_MODEL", default="prithivida/Splade_PP_en_v1")
     SPARSE_BM25_K1 = _get_float("SPARSE_BM25_K1", default=1.5)
     SPARSE_BM25_B = _get_float("SPARSE_BM25_B", default=0.75)
     SPARSE_BM25_STATS_PATH = _get_env(
@@ -163,7 +164,7 @@ class Config:
         default="Data/bm25_sparse_stats.json",
     )
     RETRIEVAL_TOP_K = _get_int("RETRIEVAL_TOP_K", default=10)
-    HYBRID_PREFETCH_LIMIT = _get_int("HYBRID_PREFETCH_LIMIT", default=50)
+    HYBRID_PREFETCH_LIMIT = _get_int("HYBRID_PREFETCH_LIMIT", default=40)
     HYBRID_FUSION = _get_env("HYBRID_FUSION", default="RRF")
     RETRIEVAL_SNIPPET_CHARS = _get_int("RETRIEVAL_SNIPPET_CHARS", default=240)
     RERANK_ENABLED = _get_bool("RERANK_ENABLED", default=True)
@@ -202,11 +203,11 @@ class Config:
             "Provide a brief 1-2 sentence summary here.\n\n"
             "---\n\n"
             "### 💡 Detailed Answer\n"
-            "Provide a detailed answer with 2-4 bullet points. "
-            "You MUST include citation brackets like [1] or [2] in your text when referencing facts from the context. "
-        "CRITICAL: If the user asks for a comparison, you MUST present the data as a Markdown Table. You MUST leave a blank line before and after the table. "
-        "If the user asks to plot a graph or chart, you MUST output a strictly formatted JSON block (```json ... ```) with keys: 'chart_type' (bar/line/pie), 'title', 'labels' (array of strings), and 'values' (array of numbers). CRITICAL: The numbers in the values array MUST NOT contain commas (e.g., use 47302 instead of 47,302)."
-    ),
+            "Provide a detailed answer with 2-4 bullet points. **Make the main points bold.** "
+            "You MUST NOT include citation brackets (like [1] or [2]) in your text.\n\n"
+            "CRITICAL: If the user asks for a comparison, you MUST present the data as a Markdown Table. You MUST leave a blank line before and after the table. "
+            "If the user asks to plot a graph or chart, you MUST output a strictly formatted JSON block (```json ... ```) with keys: 'chart_type' (bar/line/pie), 'title', 'labels' (array of strings), and 'values' (array of numbers). CRITICAL: The numbers in the values array MUST NOT contain commas (e.g., use 47302 instead of 47,302)."
+        ),
     )
 
     RETRIEVER_DEFAULT_MODE = _get_env("RETRIEVER_DEFAULT_MODE", default="hybrid")
@@ -214,7 +215,7 @@ class Config:
         "AUTO_BOOTSTRAP_INDEX_ON_QUERY",
         default=True,
     )
-    ASK_DEFAULT_LIMIT = _get_int("ASK_DEFAULT_LIMIT", default=6)
+    ASK_DEFAULT_LIMIT = _get_int("ASK_DEFAULT_LIMIT", default=5)
     ASK_DEFAULT_SOURCES_LIMIT = _get_int("ASK_DEFAULT_SOURCES_LIMIT", default=1)
     SEARCH_DEFAULT_LIMIT = _get_int("SEARCH_DEFAULT_LIMIT", default=0)
     EVALUATE_DEFAULT_LIMIT = _get_int("EVALUATE_DEFAULT_LIMIT", default=5)
@@ -260,3 +261,8 @@ class Config:
     TABLE_TARGET_WORDS = _get_float("TABLE_TARGET_WORDS", default=60.0)
     TEXT_UNIQUE_RATIO_TARGET = _get_float("TEXT_UNIQUE_RATIO_TARGET", default=0.55)
     TABLE_UNIQUE_RATIO_TARGET = _get_float("TABLE_UNIQUE_RATIO_TARGET", default=0.65)
+
+    # Semantic cache similarity threshold.
+    # Range: 0.0–1.0. Lower = more cache hits (catches paraphrases), higher = stricter matching.
+    # Previous hardcoded value was 0.9; 0.82 is a better balance for financial queries.
+    SEMANTIC_CACHE_THRESHOLD = _get_float("SEMANTIC_CACHE_THRESHOLD", default=0.82)

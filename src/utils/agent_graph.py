@@ -106,7 +106,22 @@ class AgentWorkflow:
         self._graph = self._build_graph()
 
     def supervisor_node(self, state: AgentState) -> Dict[str, Any]:
+        from src.utils.classifier import classify_intent
         query = state.get("query", "")
+        
+        if classify_intent(query) == "conversational":
+            _append_log(state, "supervisor_node: conversational intent detected")
+            return {
+                "query_normalized": normalize_query(query),
+                "needs_retrieve": False,
+                "needs_mcp": False,
+                "needs_direct": True,
+                "cache_checked": True,  # Bypass cache to avoid bad cached entries
+                "cache_hit": False,
+                "route_reason": "conversational",
+                "reflection_count": state.get("reflection_count") or 0,
+            }
+
         normalized = normalize_query(query)
         lower = normalized
 
@@ -292,8 +307,13 @@ class AgentWorkflow:
             return {"final_answer": answer}
 
         docs = state.get("retrieved_docs", [])
-        generation = generate_answer(query, docs)
-        answer = generation.get("answer") or ""
+        
+        from src.utils.classifier import classify_intent
+        if classify_intent(query) == "conversational":
+            answer = "Hello, I am Financial RAG! What can I help you with today?"
+        else:
+            generation = generate_answer(query, docs)
+            answer = generation.get("answer") or ""
 
         mcp_results = state.get("mcp_results") or []
         if mcp_results:
@@ -366,6 +386,14 @@ class AgentWorkflow:
 
     def grade_generation_node(self, state: AgentState) -> Dict[str, Any]:
         """Self-RAG: Grade generated answer for hallucinations and relevance."""
+        query = state.get("query", "")
+        from src.utils.classifier import classify_intent
+        
+        # Completely bypass grading and caching for conversational intents
+        if classify_intent(query) == "conversational":
+            _append_log(state, "grade_generation_node: Skipping grading and caching for conversational intent.")
+            return {"next_action": "end"}
+
         if not Config.SELF_RAG_ENABLED or state.get("cache_hit"):
             # If from cache or self-rag disabled, skip grading and save to cache if needed
             if not state.get("cache_hit"):

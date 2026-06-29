@@ -1,5 +1,6 @@
 import re
 import warnings
+import concurrent.futures
 
 from qdrant_client import models
 
@@ -42,14 +43,21 @@ def _format_point(point):
 
 
 def _hybrid_prefetch(query_text, prefetch_limit):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        dense_future = executor.submit(get_dense_query_vector, query_text)
+        sparse_future = executor.submit(get_sparse_query_vector, query_text)
+        
+        dense_vector = dense_future.result()
+        sparse_vector = sparse_future.result()
+
     return [
         models.Prefetch(
-            query=get_dense_query_vector(query_text),
+            query=dense_vector,
             using=Config.QDRANT_DENSE_VECTOR_NAME,
             limit=prefetch_limit,
         ),
         models.Prefetch(
-            query=get_sparse_query_vector(query_text),
+            query=sparse_vector,
             using=Config.QDRANT_SPARSE_VECTOR_NAME,
             limit=prefetch_limit,
         ),
@@ -276,7 +284,7 @@ def _heuristic_rerank_results(query_text, results, limit):
         reranked.append(updated)
 
     reranked.sort(key=lambda item: item["rerank_score"], reverse=True)
-    final = reranked[:limit]
+    final = _deduplicate_results(reranked)[:limit]
     for rank, item in enumerate(final, start=1):
         item["rank"] = rank
     return final
@@ -335,15 +343,42 @@ def _cross_encoder_rerank_results(query_text, results, limit):
         reranked.append(updated)
 
     reranked.sort(key=lambda item: item["cross_encoder_score"], reverse=True)
-    final = reranked[:limit]
+    final = _deduplicate_results(reranked)[:limit]
     for rank, item in enumerate(final, start=1):
         item["rank"] = rank
     return final
 
 
+def _deduplicate_results(results, threshold=0.5):
+    if not results:
+        return []
+    
+    unique_results = []
+    seen_tokens = []
+    
+    for item in results:
+        text = str(item.get("payload", {}).get("text") or item.get("snippet", ""))
+        tokens = set(_tokenize(text))
+        
+        is_duplicate = False
+        if tokens:
+            for seen in seen_tokens:
+                # Jaccard similarity
+                overlap = len(tokens & seen) / len(tokens | seen)
+                if overlap > threshold:
+                    is_duplicate = True
+                    break
+                    
+        if not is_duplicate:
+            unique_results.append(item)
+            seen_tokens.append(tokens)
+            
+    return unique_results
+
+
 def _rerank_results(query_text, results, limit, use_rerank):
     if not use_rerank or not results:
-        return results[:limit]
+        return _deduplicate_results(results)[:limit]
 
     backend = str(Config.RERANK_BACKEND or "cross_encoder").strip().lower()
     if backend in {"cross_encoder", "cross-encoder", "crossencoder"}:

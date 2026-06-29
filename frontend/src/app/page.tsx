@@ -5,7 +5,8 @@ import Sidebar from "@/components/chat/Sidebar";
 import MessageBubble from "@/components/chat/MessageBubble";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Menu } from "lucide-react";
+import { Send, Loader2, Menu, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 type Message = {
   role: "user" | "assistant";
@@ -19,11 +20,18 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [modelStatus, setModelStatus] = useState<any>({ is_ready: true, downloaded_mb: 0, model: "" });
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const [settings, setSettings] = useState({
     mode: "hybrid",
-    limit: 6,
-    prefetch_limit: 50,
+    limit: 5,
+    prefetch_limit: 40,
     rerank: true,
     strategy: "auto"
   });
@@ -31,6 +39,7 @@ export default function Home() {
   const [threads, setThreads] = useState<string[]>([]);
   const [currentThread, setCurrentThread] = useState<string | null>(null);
   const [historyCache, setHistoryCache] = useState<any[]>([]);
+  const [recentQueries, setRecentQueries] = useState<string[]>([]);
 
   // Auto scroll
   useEffect(() => {
@@ -39,17 +48,38 @@ export default function Home() {
     }
   }, [messages, loading]);
 
+  // Poll Backend Status
+  useEffect(() => {
+    let interval: any;
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/status");
+        if (res.ok) {
+          const data = await res.json();
+          setModelStatus(data);
+          if (data.is_ready && interval) clearInterval(interval);
+        }
+      } catch (err) {}
+    };
+    fetchStatus();
+    interval = setInterval(fetchStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Fetch History
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch("http://localhost:8000/chat-history?limit=100");
+        const res = await fetch("http://127.0.0.1:8000/chat-history?limit=100");
         if (res.ok) {
           const data = await res.json();
           if (data.items) {
             setHistoryCache(data.items);
             const uniqueThreads = Array.from(new Set(data.items.map((item: any) => item.thread_id).filter(Boolean))) as string[];
             setThreads(uniqueThreads);
+            
+            const queries = Array.from(new Set(data.items.map((item: any) => item.query))).slice(0, 10) as string[];
+            setRecentQueries(queries);
           }
         }
       } catch (err) {
@@ -107,7 +137,7 @@ export default function Home() {
         payload.thread_id = currentThread;
       }
 
-      const res = await fetch(`http://localhost:8000${endpoint}`, {
+      const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -191,6 +221,7 @@ export default function Home() {
           threads={threads}
           currentThread={currentThread}
           onSelectThread={handleSelectThread}
+          recentQueries={recentQueries}
           onSuggestionClick={(q: string) => {
             setInput(q);
             setTimeout(() => {
@@ -204,22 +235,53 @@ export default function Home() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col h-full relative">
+        {!modelStatus.is_ready && (
+          <div className="absolute top-0 left-0 right-0 bg-blue-50 border-b border-blue-200 text-blue-700 p-2 text-center text-xs font-semibold flex items-center justify-center gap-2 z-50 shadow-sm">
+            <Loader2 className="animate-spin" size={14} />
+            System Initializing: Downloading AI Model ({modelStatus.downloaded_mb} MB / ~1300 MB)
+          </div>
+        )}
+
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur z-10">
+        <div className={`flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur z-10 ${!modelStatus.is_ready ? 'mt-8' : ''}`}>
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <Menu size={20} />
           </Button>
-          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
-            Alphalens AI
-          </h2>
-          <div className="w-10"></div> {/* Spacer for perfect centering */}
+          <div className="flex items-center justify-center">
+            <h2 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-emerald-500">
+              Alphalens AI
+            </h2>
+          </div>
+          <div className="w-10"></div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 pb-32">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 pb-32">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center opacity-50">
-              <h1 className="text-4xl font-bold mb-4">How can I help you?</h1>
-              <p>Try asking about financial data, Apple's gross margin, etc.</p>
+            <div className="h-full flex flex-col items-center justify-center opacity-60">
+              <div className="w-24 h-24 bg-[#1E1C2A] border border-[#2D2A3D] rounded-full flex items-center justify-center mb-6 shadow-xl">
+                <span className="text-5xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">✤</span>
+              </div>
+              <h1 className="text-5xl font-extrabold mb-5 text-white tracking-tight">How can I help you?</h1>
+              <p className="text-[#8F8D9E] text-base text-center max-w-md mb-8">Try asking about financial data, Apple's gross margin, or analyze crypto trends directly.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl mt-4">
+                {["What was meta most profitable year?", "Summarize Apple's gross margin in 2024", "How did Microsoft perform in Q1?", "Analyze Amazon's cloud revenue growth"].map((q) => (
+                  <Button 
+                    key={q} 
+                    variant="outline" 
+                    className="justify-start text-left h-auto py-3 px-5 text-sm whitespace-normal rounded-xl text-muted-foreground border-[#2D2A3D] bg-[#1E1C2A] hover:bg-[#2B283A] hover:text-white transition-all shadow-sm"
+                    onClick={() => {
+                      setInput(q);
+                      setTimeout(() => {
+                        const form = document.getElementById("chat-form");
+                        if (form) form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+                      }, 100);
+                    }}
+                  >
+                    {q}
+                  </Button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="max-w-4xl mx-auto flex flex-col">
@@ -237,33 +299,35 @@ export default function Home() {
         </div>
 
         {/* Input Box */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background to-transparent pt-10 pb-6 px-4">
-          <div className="max-w-4xl mx-auto">
-            <form id="chat-form" onSubmit={handleSubmit} className="relative bg-muted/30 border border-border rounded-xl shadow-lg flex items-end">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                placeholder="Ask about financial insights..."
-                className="min-h-[60px] w-full resize-none bg-transparent border-0 focus-visible:ring-0 px-4 py-4 text-base"
-                rows={1}
-              />
-              <div className="p-3">
-                <Button 
-                  type="submit" 
-                  disabled={!input.trim() || loading} 
-                  size="icon"
-                  className="rounded-full h-10 w-10 transition-transform active:scale-95"
-                >
-                  <Send size={18} />
-                </Button>
-              </div>
-            </form>
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background/90 to-transparent">
+          <form 
+            id="chat-form"
+            onSubmit={handleSubmit} 
+            className="max-w-4xl mx-auto relative bg-[#1E1C2A] rounded-2xl border border-[#2D2A3D] shadow-2xl overflow-hidden focus-within:ring-2 focus-within:ring-[#7059DB]/50 transition-all"
+          >
+            <Textarea 
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask anything..."
+              className="w-full resize-none border-0 bg-transparent py-5 px-6 pr-16 focus-visible:ring-0 min-h-[72px] max-h-48 text-white placeholder:text-[#8F8D9E] text-lg md:text-lg font-medium"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e as any);
+                }
+              }}
+            />
+            <Button 
+              type="submit" 
+              size="icon"
+              disabled={loading || !input.trim()}
+              className="absolute right-3 bottom-3 rounded-xl bg-gradient-to-r from-[#4A3AFF] to-[#7059DB] text-white hover:opacity-90 h-10 w-10 disabled:opacity-50 disabled:from-muted disabled:to-muted"
+            >
+              <Send size={18} className={loading ? "animate-pulse" : ""} />
+            </Button>
+          </form>
+          <div className="text-center mt-3 text-[10px] text-[#8F8D9E] font-medium tracking-wide">
+            Powered by Alphalens RAG Engine • Verify critical financial data
           </div>
         </div>
       </div>

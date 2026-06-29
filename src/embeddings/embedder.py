@@ -28,6 +28,9 @@ _REMOTE_QDRANT_DISABLED = False
 _IN_MEMORY_QDRANT_CLIENT = None
 _FORCE_IN_MEMORY_QDRANT = False
 
+_FASTEMBED_DENSE_MODEL = None
+_FASTEMBED_SPARSE_MODEL = None
+
 
 def _get_openai_client():
     if not Config.OPENAI_API_KEY:
@@ -451,6 +454,18 @@ def embed_texts(texts, batch_size=None):
             )
             return _local_embeddings_for_texts(texts)
 
+    if backend == "fastembed":
+        global _FASTEMBED_DENSE_MODEL
+        if _FASTEMBED_DENSE_MODEL is None:
+            from fastembed import TextEmbedding
+            _FASTEMBED_DENSE_MODEL = TextEmbedding(model_name=Config.EMBEDDING_MODEL)
+        
+        embeddings = []
+        for batch in _chunk_list(texts, batch_size):
+            batch_embeddings = list(_FASTEMBED_DENSE_MODEL.embed(batch))
+            embeddings.extend([list(vec) for vec in batch_embeddings])
+        return embeddings
+
     if backend in {"local", "local_hash"}:
         return _local_embeddings_for_texts(texts)
 
@@ -528,6 +543,16 @@ def get_dense_query_vector(query_text):
 def get_sparse_query_vector(query_text):
     if not query_text or not str(query_text).strip():
         raise ValueError("query_text cannot be empty")
+        
+    backend = str(Config.SPARSE_BACKEND or "").strip().lower()
+    if backend == "fastembed":
+        global _FASTEMBED_SPARSE_MODEL
+        if _FASTEMBED_SPARSE_MODEL is None:
+            from fastembed import SparseTextEmbedding
+            _FASTEMBED_SPARSE_MODEL = SparseTextEmbedding(model_name=Config.SPARSE_MODEL)
+        sparse_result = list(_FASTEMBED_SPARSE_MODEL.query_embed(query_text))[0]
+        return SparseVector(indices=list(sparse_result.indices), values=list(sparse_result.values))
+        
     return _build_sparse_vector(query_text, _load_sparse_stats())
 
 

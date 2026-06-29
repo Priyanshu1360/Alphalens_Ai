@@ -22,6 +22,17 @@ try:
 except Exception:  # pragma: no cover - optional dependency fallback
     ChatHistoryStore = None
 
+import numpy as np
+
+def _sanitize_dict(d: Any) -> Any:
+    if isinstance(d, dict):
+        return {k: _sanitize_dict(v) for k, v in d.items()}
+    elif isinstance(d, (list, tuple, set)):
+        return [_sanitize_dict(i) for i in d]
+    elif type(d).__module__ == 'numpy':
+        return d.item()
+    return d
+
 app = FastAPI(title="Finance RAG Agent API", version="1.0.0")
 
 app.add_middleware(
@@ -44,7 +55,7 @@ ENABLE_SEMANTIC_CACHE = os.getenv("ENABLE_SEMANTIC_CACHE", "false").lower() in {
 exact_cache = ExactMatchCache(ttl_seconds=CACHE_TTL_SECONDS)
 semantic_cache = SemanticCache(
     ttl_seconds=CACHE_TTL_SECONDS,
-    similarity_threshold=0.9
+    similarity_threshold=Config.SEMANTIC_CACHE_THRESHOLD,
 )
 
 
@@ -114,6 +125,26 @@ class IngestRequest(BaseModel):
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {"status": "ok"}
+
+
+@app.get("/status")
+def status() -> Dict[str, Any]:
+    # Check HuggingFace model download progress
+    model_name = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
+    folder_name = "models--" + model_name.replace("/", "--")
+    cache_dir = Path(os.path.expanduser("~/.cache/huggingface/hub")) / folder_name
+    
+    downloaded_mb = 0
+    if cache_dir.exists():
+        total_size = sum(f.stat().st_size for f in cache_dir.rglob('*') if f.is_file())
+        downloaded_mb = round(total_size / (1024 * 1024), 2)
+        
+    return {
+        "status": "ok",
+        "model": model_name,
+        "downloaded_mb": downloaded_mb,
+        "is_ready": downloaded_mb > 1200 # bge-large is ~1300MB
+    }
 
 
 @app.get("/mcp-tools")
@@ -270,13 +301,15 @@ def query(payload: QueryRequest) -> Dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    exact_cache.set(query_text, result.get("answer", ""), result.get("results", []))
-    if semantic_cache is not None:
-        semantic_cache.set(
-            query_text,
-            result.get("answer", ""),
-            result.get("results", []),
-        )
+    from src.utils.classifier import classify_intent
+    if classify_intent(query_text) != "conversational":
+        exact_cache.set(query_text, result.get("answer", ""), result.get("results", []))
+        if semantic_cache is not None:
+            semantic_cache.set(
+                query_text,
+                result.get("answer", ""),
+                result.get("results", []),
+            )
 
     elapsed_ms = round((time.perf_counter() - started) * 1000.0, 2)
     response_payload = {
@@ -297,7 +330,7 @@ def query(payload: QueryRequest) -> Dict[str, Any]:
             "elapsed_ms": elapsed_ms,
         },
     )
-    return response_payload
+    return _sanitize_dict(response_payload)
 
 
 @app.post("/agent-query")
@@ -327,19 +360,25 @@ def agent_query(payload: AgentQueryRequest) -> Dict[str, Any]:
     # Write to caches if successful
     final_ans = state.get("final_answer", "")
     docs = state.get("retrieved_docs", [])
-    if final_ans:
+    
+    from src.utils.classifier import classify_intent
+    intent = classify_intent(query_text)
+    
+    if final_ans and intent != "conversational":
         exact_cache.set(query_text, final_ans, docs)
         if semantic_cache is not None:
             semantic_cache.set(query_text, final_ans, docs)
 
     elapsed_ms = round((time.perf_counter() - started) * 1000.0, 2)
+    route_reason = "conversational" if intent == "conversational" else state.get("route_reason")
+    
     response_payload = {
         "query": query_text,
         "retrieved_docs": state.get("retrieved_docs", []),
         "cache_hit": bool(state.get("cache_hit", False)),
         "mcp_results": state.get("mcp_results", []),
         "final_answer": state.get("final_answer", ""),
-        "route_reason": state.get("route_reason"),
+        "route_reason": route_reason,
         "run_log": state.get("run_log", []),
         "elapsed_ms": elapsed_ms,
         "langgraph_enabled": agent_workflow.langgraph_enabled,
@@ -358,4 +397,4 @@ def agent_query(payload: AgentQueryRequest) -> Dict[str, Any]:
             "elapsed_ms": elapsed_ms,
         },
     )
-    return response_payload
+    return _sanitize_dict(response_payload)

@@ -55,22 +55,41 @@ def _build_prompt(query, results):
         "show graph",
         "show chart",
     ]
+    table_terms = [
+        "table",
+        "tabular",
+        "compare",
+        "comparison",
+        "vs",
+        "versus",
+    ]
+    
     chart_instruction = ""
+    table_instruction = ""
     query_lower = (query or "").lower()
+    
     if any(term in query_lower for term in chart_terms):
         chart_instruction = (
             "\n\nThe user is asking for a chart or trend view. "
             "Do not format the answer as a table. "
-            "You MUST output a strictly formatted JSON block (```json ... ```) with keys: "
-            "'chart_type' (bar/line/pie), 'title' (string), 'labels' (array of strings), and 'values' (array of numbers). "
-            "CRITICAL: The numbers in the values array MUST NOT contain commas (e.g., use 47302 instead of 47,302). "
+            "CRITICAL: You MUST APPEND a strictly formatted JSON block (```json ... ```) at the very end of your response containing the chart data. "
+            "The JSON must have keys: 'chart_type' (bar/line/pie), 'title' (string), 'labels' (array of strings), and 'values' (array of numbers). "
+            "The numbers in the values array MUST be raw integers or floats without commas (e.g., use 47302 instead of 47,302). "
             "Do not use Mermaid."
         )
+    elif any(term in query_lower for term in table_terms):
+        table_instruction = (
+            "\n\nThe user is asking for a comparison or table. "
+            "You MUST format the detailed data as a Markdown Table. "
+            "Leave a blank line before and after the table. "
+            "Do not use standard bullet points for the data if a table is requested."
+        )
+        
     guardrail = (
-        "\n\nGUARDRAIL: If the user asks for a chart or graph, you MUST provide the JSON block. If the data is not in the Context, use your internal knowledge to provide approximate realistic numbers. "
-        "For normal text questions, you must ONLY answer based on the provided Context. "
+        "\n\nGUARDRAIL: If the user asks for a chart, graph, comparison, or table, you MUST provide the requested format. If the data is not in the Context, explicitly state that you cannot provide the requested format due to missing data. "
+        "You must ONLY answer based on the provided Context. "
         "If a text question is outside the scope, reply by stating that the query is outside the scope of the provided financial data. "
-        "Then, suggest 1-3 alternative questions the user could ask based on the available Context. "
+        "Then, add a section exactly named '### ❓ Suggested Questions' and suggest 1-3 alternative questions the user could ask based on the available Context, formatted as bullet points. "
         "CRITICAL: Do NOT provide the answers to the questions you suggest. Just list the suggested questions. "
         "CRITICAL: Do NOT duplicate your response or include meta tags like 'summary:'."
     )
@@ -79,6 +98,7 @@ def _build_prompt(query, results):
         f"Context:\n{_context_block(results)}\n\n"
         f"{Config.GENERATOR_OUTPUT_INSTRUCTION}"
         f"{chart_instruction}"
+        f"{table_instruction}"
         f"{guardrail}"
     )
     return prompt, user_content
@@ -168,44 +188,11 @@ def generate_answer(query, results):
 
 
 def generate_conversational_answer(query):
-    if not Config.LLM_ENABLED:
-        return {
-            "answer": "Hello! I am your AI assistant.",
-            "generation_mode": "fallback_only",
-        }
-
-    try:
-        clients = _get_llm_clients()
-    except Exception as exc:
-        return {
-            "answer": "Hello! I am your AI assistant.",
-            "generation_mode": "fallback_only",
-            "llm_error": str(exc),
-        }
-
-    prompt = (
-        "You are Alphalens AI, a highly capable financial assistant. "
-        "The user is making a casual conversation or greeting. "
-        "Respond politely, concisely, and warmly. Do not ask for financial documents unless they bring it up."
-    )
-    user_content = query
-
-    last_exc = None
-    for client in clients:
-        try:
-            answer = _answer_via_chat_completions(
-                client,
-                Config.LLM_MODEL,
-                prompt,
-                user_content,
-            )
-            if answer:
-                return {"answer": answer, "generation_mode": "conversational_llm"}
-        except Exception as exc:
-            last_exc = exc
-
+    """
+    Returns a static, friendly greeting for conversational/out-of-domain queries
+    to save LLM latency and prevent unnecessary citations.
+    """
     return {
-        "answer": "Hello! I am your AI assistant.",
-        "generation_mode": "fallback_only",
-        "llm_error": str(last_exc),
+        "answer": "Hello, I am Financial RAG! What can I help you with today?",
+        "generation_mode": "conversational",
     }

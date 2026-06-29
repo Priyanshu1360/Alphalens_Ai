@@ -1,0 +1,32 @@
+{
+  "total": 4,
+  "context_relevance_score": 1.0,
+  "groundedness_score": 1.0,
+  "answer_relevance_score": 0.75,
+  "details": [
+    {
+      "query": "What was Amazon's revenue trend in 2024?",
+      "context_relevance": true,
+      "groundedness": true,
+      "answer_relevance": false
+    },
+    {
+      "query": "What do Apple filings say about gross margin changes in 2024?",
+      "context_relevance": true,
+      "groundedness": true,
+      "answer_relevance": true
+    },
+    {
+      "query": "What did Meta say about AI spending in 2024?",
+      "context_relevance": true,
+      "groundedness": true,
+      "answer_relevance": true
+    },
+    {
+      "query": "Summarize Google Cloud performance in 2024 filings.",
+      "context_relevance": true,
+      "groundedness": true,
+      "answer_relevance": true
+    }
+  ]
+}

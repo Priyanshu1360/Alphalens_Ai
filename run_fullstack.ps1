@@ -8,7 +8,7 @@ if (-not (Test-Path $python)) {
 }
 
 Write-Host "Starting FastAPI Backend on Port 8000..." -ForegroundColor Green
-Start-Process -FilePath $python -ArgumentList "-m uvicorn src.api.routes:app --port 8000" -WindowStyle Normal
+Start-Process -FilePath $python -ArgumentList "-m uvicorn src.api.routes:app --host 0.0.0.0 --port 8000" -WindowStyle Normal
 
 Write-Host "Starting Next.js Frontend on Port 3000..." -ForegroundColor Cyan
 Set-Location "$PSScriptRoot\frontend"
@@ -19,6 +19,6 @@ Write-Host "API: http://localhost:8000"
 Write-Host "UI: http://localhost:3000"
 
 Write-Host "Waiting for servers to initialize..." -ForegroundColor Cyan
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 15
 Write-Host "Opening UI in your default browser..." -ForegroundColor Green
 Start-Process "http://localhost:3000"

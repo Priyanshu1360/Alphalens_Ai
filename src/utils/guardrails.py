@@ -72,28 +72,30 @@ input_guard = Guard().use(
 
 def apply_input_guardrails(query: str) -> str:
     """
-    Applies Layer 1 input governance using Guardrails AI:
-    1. Blocks prompt injection attacks (Raises Exception on fail).
-    2. Masks sensitive PII (SSN, Email) before processing (Fixes on fail).
+    Applies Layer 1 input governance natively:
+    1. Blocks prompt injection attacks.
+    2. Masks sensitive PII (SSN, Email) before processing.
     """
     if not query:
         return query
         
-    try:
-        # Validate the input string using the Guard
-        result = input_guard.validate(query)
+    # 1. Prompt Injection Check
+    if INJECTION_REGEX.search(query):
+        LOGGER.warning(f"Blocked potential prompt injection: {query}")
+        raise ValueError("Security Guardrail: Your query contains unauthorized instruction patterns.")
         
-        # If the PII validator fired, it will "fix" the string and store it in validated_output
-        # If it passed without fixes, validated_output is the original string.
-        # However, if validated_output is None (e.g. it failed but wasn't fixed), we fallback.
-        if result.validated_output is not None:
-            return result.validated_output
-        return query
-    except Exception as e:
-        # Guardrails will raise an Exception (typically Exception or ValidationError) 
-        # when the PromptInjectionValidator fails because of on_fail="exception".
-        if type(e).__name__ != 'ValidationError' and "unauthorized instruction" not in str(e):
-            raise e # Don't mask generic bugs like NameError
+    # 2. PII Masking
+    sanitized = query
+    if SSN_REGEX.search(sanitized):
+        LOGGER.info("Masked SSN in query.")
+        sanitized = SSN_REGEX.sub("[SSN_REDACTED]", sanitized)
         
-        LOGGER.warning(f"Guardrails exception: {e}")
-        raise ValueError("Security Guardrail: Your query contains unauthorized instruction patterns.") from e
+    if EMAIL_REGEX.search(sanitized):
+        LOGGER.info("Masked Email in query.")
+        sanitized = EMAIL_REGEX.sub("[EMAIL_REDACTED]", sanitized)
+        
+    if PHONE_REGEX.search(sanitized):
+        LOGGER.info("Masked Phone Number in query.")
+        sanitized = PHONE_REGEX.sub("[PHONE_REDACTED]", sanitized)
+        
+    return sanitized

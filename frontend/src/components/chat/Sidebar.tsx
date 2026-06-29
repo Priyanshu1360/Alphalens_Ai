@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -8,43 +8,80 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useTheme } from "next-themes";
 import { Moon, Sun, MessageSquarePlus, X } from "lucide-react";
+import Link from "next/link";
 
-export default function Sidebar({ settings, setSettings, onNewChat, threads, currentThread, onSelectThread, onSuggestionClick, closeSidebar }: any) {
+export default function Sidebar({ settings, setSettings, onNewChat, threads, currentThread, onSelectThread, recentQueries, onSuggestionClick, closeSidebar }: any) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(288);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const isResizing = useRef(false);
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing.current && sidebarRef.current) {
+      const newWidth = e.clientX - sidebarRef.current.getBoundingClientRect().left;
+      if (newWidth > 200 && newWidth < 800) {
+        setSidebarWidth(newWidth);
+      }
+    }
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    isResizing.current = false;
+    document.removeEventListener("mousemove", resize);
+    document.removeEventListener("mouseup", stopResizing);
+    document.body.style.cursor = "default";
+  }, [resize]);
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    document.addEventListener("mousemove", resize);
+    document.addEventListener("mouseup", stopResizing);
+    document.body.style.cursor = "col-resize";
+  }, [resize, stopResizing]);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    return () => {
+      document.removeEventListener("mousemove", resize);
+      document.removeEventListener("mouseup", stopResizing);
+    };
+  }, [resize, stopResizing]);
 
   return (
-    <div className="w-80 border-r bg-background/95 backdrop-blur h-screen overflow-y-auto p-4 flex flex-col gap-6 absolute md:relative z-50 shadow-2xl md:shadow-none">
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-semibold text-muted-foreground">Menu & Settings</h3>
+    <div 
+      ref={sidebarRef}
+      style={{ width: `${sidebarWidth}px` }}
+      className="border-r border-[#2D2A3D] bg-[#13111C] text-[#ffffff] h-screen overflow-y-auto p-4 flex flex-col gap-6 absolute md:relative z-50 shadow-2xl md:shadow-none flex-shrink-0"
+    >
+      {/* Resizer Handle */}
+      <div 
+        onMouseDown={startResizing}
+        className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-[#7059DB] hover:opacity-100 opacity-0 transition-opacity z-[60]"
+      />
+      
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400 flex items-center gap-2">
+          <span className="text-4xl">✤</span> Alphalens
+        </h2>
         <div className="flex gap-1">
           {mounted && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            title="Toggle theme"
-          >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </Button>
-        )}
+            <div className="w-8"></div>
+          )}
         <Button variant="ghost" size="icon" onClick={closeSidebar} className="md:hidden" title="Close Sidebar">
           <X size={18} />
         </Button>
         </div>
       </div>
 
-      <Button onClick={onNewChat} className="w-full flex items-center gap-2" variant="default">
-        <MessageSquarePlus size={16} /> New Chat
+      <Button onClick={onNewChat} className="w-full flex items-center justify-start gap-3 rounded-full bg-gradient-to-r from-[#4A3AFF] to-[#7059DB] text-white hover:opacity-90 shadow-md border-0 h-12 px-6 text-lg font-bold" variant="default">
+        <MessageSquarePlus size={22} /> New Chat
       </Button>
 
       {threads && threads.length > 0 && (
         <div className="flex flex-col gap-2">
-          <Label className="text-xs">Saved Threads</Label>
+          <Label className="text-base font-semibold">Saved Threads</Label>
           <Select 
             value={currentThread || ""} 
             onValueChange={onSelectThread}
@@ -63,29 +100,31 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
 
       <Separator />
 
-      <div className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold text-primary">Suggestions</h3>
-        <div className="flex flex-col gap-2">
-          {["What was meta most profitable year?", "Summarize Apple's gross margin in 2024", "How did Microsoft perform in Q1?"].map((q) => (
-            <Button 
-              key={q} 
-              variant="outline" 
-              className="w-full justify-start text-left h-auto py-2 px-3 text-xs whitespace-normal"
-              onClick={() => onSuggestionClick(q)}
-            >
-              {q}
-            </Button>
-          ))}
+      {recentQueries && recentQueries.length > 0 && (
+        <div className="flex flex-col gap-4 mt-2">
+          <h3 className="text-sm uppercase tracking-wider font-bold text-muted-foreground px-2">Recent Queries</h3>
+          <div className="flex flex-col gap-1">
+            {recentQueries.map((q: string) => (
+              <Button 
+                key={q} 
+                variant="ghost" 
+                className="w-full justify-start text-left h-auto py-3 px-5 text-sm whitespace-normal rounded-xl text-muted-foreground hover:bg-[#2B283A] hover:text-white transition-colors"
+                onClick={() => onSuggestionClick(q)}
+              >
+                {q}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <Separator />
 
       <div className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold text-primary">Retrieval Settings</h3>
+        <h3 className="text-lg font-bold text-primary">Retrieval Settings</h3>
         
         <div className="space-y-2">
-          <Label className="text-xs">Search Mode</Label>
+          <Label className="text-base">Search Mode</Label>
           <Select 
             value={settings.mode} 
             onValueChange={(val) => setSettings({...settings, mode: val})}
@@ -102,7 +141,7 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs">Top K Limit: {settings.limit}</Label>
+          <Label className="text-base">Top K Limit: {settings.limit}</Label>
           <input 
             type="range" 
             min="1" max="20" 
@@ -113,7 +152,7 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs">Prefetch Limit: {settings.prefetch_limit || 50}</Label>
+          <Label className="text-base">Prefetch Limit: {settings.prefetch_limit || 50}</Label>
           <input 
             type="range" 
             min="10" max="150" step="10"
@@ -124,7 +163,7 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
         </div>
 
         <div className="flex items-center justify-between">
-          <Label className="text-xs">Enable Reranking</Label>
+          <Label className="text-base">Enable Reranking</Label>
           <Switch 
             checked={settings.rerank} 
             onCheckedChange={(val) => setSettings({...settings, rerank: val})}
@@ -135,10 +174,10 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
       <Separator />
 
       <div className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold text-primary">Generation Settings</h3>
+        <h3 className="text-lg font-bold text-primary">Generation Settings</h3>
         
         <div className="space-y-2">
-          <Label className="text-xs">Strategy</Label>
+          <Label className="text-base">Strategy</Label>
           <Select 
             value={settings.strategy} 
             onValueChange={(val) => setSettings({...settings, strategy: val})}
@@ -177,6 +216,17 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-4 mt-auto pt-6 pb-2">
+        <Link href="/audit" className="w-full">
+          <Button variant="ghost" className="w-full justify-start text-left bg-transparent hover:bg-[#2B283A] hover:text-white text-muted-foreground rounded-full px-4 h-11 transition-colors">
+            <span className="flex items-center gap-3">
+              <span className="text-xl">📊</span>
+              <span className="font-medium">Audit Logs</span>
+            </span>
+          </Button>
+        </Link>
       </div>
 
     </div>
