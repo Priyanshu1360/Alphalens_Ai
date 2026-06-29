@@ -36,7 +36,7 @@ export default function Home() {
     strategy: "auto"
   });
 
-  const [threads, setThreads] = useState<any[]>([]);
+  const [threads, setThreads] = useState<string[]>([]);
   const [currentThread, setCurrentThread] = useState<string | null>(null);
   const [historyCache, setHistoryCache] = useState<any[]>([]);
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
@@ -76,13 +76,7 @@ export default function Home() {
           if (data.items) {
             setHistoryCache(data.items);
             const uniqueThreads = Array.from(new Set(data.items.map((item: any) => item.thread_id).filter(Boolean))) as string[];
-            const threadObjects = uniqueThreads.map(id => {
-              // Find the earliest message in this thread to use as title
-              const threadItems = data.items.filter((item: any) => item.thread_id === id);
-              threadItems.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-              return { id, title: threadItems.length > 0 ? threadItems[0].query : `Thread ${id}` };
-            });
-            setThreads(threadObjects);
+            setThreads(uniqueThreads);
             
             const queries = Array.from(new Set(data.items.map((item: any) => item.query))).slice(0, 10) as string[];
             setRecentQueries(queries);
