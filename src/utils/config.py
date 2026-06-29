@@ -78,7 +78,7 @@ def _get_dict(*names, default=None):
 
 class Config:
     OPENAI_API_KEYS = _get_list("OPENAI_API_KEY", "XAI_API_KEY", "GROQ_API_KEY")
-    OPENAI_BASE_URL = _get_env("OPENAI_BASE_URL", "XAI_BASE_URL", "GROQ_BASE_URL")
+    OPENAI_BASE_URL = _get_env("OPENAI_BASE_URL", "XAI_BASE_URL", "GROQ_BASE_URL", default="https://api.groq.com/openai/v1")
     OPENAI_EMBEDDINGS_ENABLED = _get_bool("OPENAI_EMBEDDINGS_ENABLED", default=True)
     OPENAI_FALLBACK_TO_LOCAL_ON_ERROR = _get_bool(
         "OPENAI_FALLBACK_TO_LOCAL_ON_ERROR",
