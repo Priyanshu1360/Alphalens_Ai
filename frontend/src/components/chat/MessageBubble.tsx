@@ -36,11 +36,11 @@ export default function MessageBubble({ role, content, metadata }: MessageBubble
     if (resultsCount >= 3) {
       return { color: "border-emerald-500/50", badge: null };
     } else if (resultsCount > 0) {
-      return { color: "border-amber-500/50", badge: <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">🟡 Partially Verified</Badge> };
+      return { color: "border-amber-500/50", badge: null };
     } else if (metadata.generation_mode === "fallback" || metadata.route_reason === "conversational" || content.includes("Hello, I am Financial RAG!")) {
       return { color: "border-blue-500/50", badge: null };
     } else {
-      return { color: "border-red-500/50", badge: <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">🔴 Unverified (Hallucination Risk)</Badge> };
+      return { color: "border-red-500/50", badge: null };
     }
   };
 
@@ -72,12 +72,7 @@ export default function MessageBubble({ role, content, metadata }: MessageBubble
                 : `bg-[#1E1C2A] border border-[#2D2A3D] shadow-lg rounded-tl-sm text-white ${guardrail.color}`
             } prose prose-lg dark:prose-invert max-w-none break-words relative leading-relaxed`}
           >
-            {/* Guardrail Badge */}
-            {!isUser && guardrail.badge && (
-              <div className="absolute -top-3 right-4 shadow-sm rounded-full bg-[#13111C] border border-[#2D2A3D]">
-                {guardrail.badge}
-              </div>
-            )}
+            {/* Removed Guardrail Badge */}
             {isUser ? (
               <div className="whitespace-pre-wrap">{content}</div>
             ) : (
