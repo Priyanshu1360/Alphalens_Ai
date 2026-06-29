@@ -310,7 +310,9 @@ class AgentWorkflow:
         
         from src.utils.classifier import classify_intent
         if classify_intent(query) == "conversational":
-            answer = "Hello, I am Financial RAG! What can I help you with today?"
+            from src.llm.llm_client import generate_conversational_answer
+            generation = generate_conversational_answer(query)
+            answer = generation.get("answer") or ""
         else:
             generation = generate_answer(query, docs)
             answer = generation.get("answer") or ""

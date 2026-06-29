@@ -189,10 +189,44 @@ def generate_answer(query, results):
 
 def generate_conversational_answer(query):
     """
-    Returns a static, friendly greeting for conversational/out-of-domain queries
-    to save LLM latency and prevent unnecessary citations.
+    Generates a conversational response using the LLM with a specific AI persona prompt.
     """
+    if not Config.LLM_ENABLED:
+        return {
+            "answer": "Hello, I am Alphalens AI! What can I help you with today?",
+            "generation_mode": "conversational",
+        }
+
+    try:
+        clients = _get_llm_clients()
+    except Exception as exc:
+        return {
+            "answer": "Hello, I am Alphalens AI! What can I help you with today?",
+            "generation_mode": "conversational",
+        }
+
+    prompt = (
+        "You are Alphalens AI, a helpful and friendly financial AI assistant. "
+        "Your job is to help users analyze financial reports, earnings calls, and revenue data for companies like Apple, Meta, and Amazon. "
+        "Keep your answers short, friendly, and directly address the user's greeting or question about your capabilities. "
+        "Do not use markdown formatting like 'Summary:' or 'Detailed Answer:' for conversational queries."
+    )
+
+    last_exc = None
+    for client in clients:
+        try:
+            answer = _answer_via_chat_completions(
+                client,
+                Config.LLM_MODEL,
+                prompt,
+                query,
+            )
+            if answer:
+                return {"answer": answer, "generation_mode": "conversational_llm"}
+        except Exception as exc:
+            last_exc = exc
+
     return {
-        "answer": "Hello, I am Financial RAG! What can I help you with today?",
+        "answer": "Hello, I am Alphalens AI! What can I help you with today?",
         "generation_mode": "conversational",
     }
