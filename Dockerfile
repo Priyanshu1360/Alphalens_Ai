@@ -25,10 +25,6 @@ ENV HOME=/home/user \
 COPY --chown=user . $HOME/app
 WORKDIR $HOME/app
 
-# Pre-download the FastEmbed models during the Docker Build phase
-# This bakes the 1.5GB models into the image so they never download again!
-RUN python -c "from fastembed import TextEmbedding, SparseTextEmbedding; TextEmbedding(model_name='BAAI/bge-large-en-v1.5'); SparseTextEmbedding(model_name='prithivida/Splade_PP_en_v1')"
-
 # Hugging Face Spaces expects the app to run on port 7860 by default
 EXPOSE 7860
 
