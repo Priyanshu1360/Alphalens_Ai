@@ -24,6 +24,12 @@ export default function MessageBubble({ role, content, metadata }: MessageBubble
   const isUser = role === "user";
   const [isShortened, setIsShortened] = useState(false);
 
+  const isConversational = metadata?.route_reason === "conversational" || 
+                           metadata?.generation_mode === "conversational_llm" || 
+                           metadata?.generation_mode === "conversational" || 
+                           content.includes("Alphalens AI") || 
+                           (metadata && metadata.retrieved_docs_count === 0 && metadata.mcp_results_count === 0 && !metadata.cache_hit);
+
   // 5-State Guardrails Logic
   const getGuardrailState = () => {
     if (!metadata) return { color: "border-border", badge: null };
@@ -32,12 +38,16 @@ export default function MessageBubble({ role, content, metadata }: MessageBubble
       return { color: "border-green-500/50", badge: null };
     }
     
-    const resultsCount = metadata.results?.length || 0;
+    if (isConversational) {
+      return { color: "border-emerald-500/50", badge: null };
+    }
+    
+    const resultsCount = metadata.results?.length || metadata.retrieved_docs_count || 0;
     if (resultsCount >= 3) {
       return { color: "border-emerald-500/50", badge: null };
     } else if (resultsCount > 0) {
       return { color: "border-amber-500/50", badge: null };
-    } else if (metadata.generation_mode === "fallback" || metadata.route_reason === "conversational" || content.includes("Hello, I am Financial RAG!")) {
+    } else if (metadata.generation_mode === "fallback") {
       return { color: "border-blue-500/50", badge: null };
     } else {
       return { color: "border-red-500/50", badge: null };
@@ -204,7 +214,7 @@ export default function MessageBubble({ role, content, metadata }: MessageBubble
                 */}
 
                 {/* Unified Sources and Raw JSON */}
-                {(metadata.route_reason !== "conversational" && !content.includes("Hello, I am Financial RAG!")) && (
+                {!isConversational && (
                   <AccordionItem value="sources-data" className="border-b-0 mb-2 border border-[#2D2A3D] rounded-xl bg-[#1E1C2A] overflow-hidden shadow-md">
                     <AccordionTrigger className="px-4 py-3 hover:bg-[#2B283A] text-xs font-semibold text-white transition-colors">
                       <div className="flex items-center gap-2">
