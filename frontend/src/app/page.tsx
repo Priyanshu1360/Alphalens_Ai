@@ -14,6 +14,8 @@ type Message = {
   metadata?: any;
 };
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -53,7 +55,7 @@ export default function Home() {
     let interval: any;
     const fetchStatus = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/status");
+        const res = await fetch(`${API_BASE_URL}/status`);
         if (res.ok) {
           const data = await res.json();
           setModelStatus(data);
@@ -70,7 +72,7 @@ export default function Home() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/chat-history?limit=100");
+        const res = await fetch(`${API_BASE_URL}/chat-history?limit=100`);
         if (res.ok) {
           const data = await res.json();
           if (data.items) {
@@ -137,7 +139,7 @@ export default function Home() {
         payload.thread_id = currentThread;
       }
 
-      const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
