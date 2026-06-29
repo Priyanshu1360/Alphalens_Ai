@@ -38,7 +38,7 @@ export default function Home() {
     strategy: "auto"
   });
 
-  const [threads, setThreads] = useState<string[]>([]);
+  const [threads, setThreads] = useState<any[]>([]);
   const [currentThread, setCurrentThread] = useState<string | null>(null);
   const [historyCache, setHistoryCache] = useState<any[]>([]);
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
@@ -77,7 +77,13 @@ export default function Home() {
           const data = await res.json();
           if (data.items) {
             setHistoryCache(data.items);
-            const uniqueThreads = Array.from(new Set(data.items.map((item: any) => item.thread_id).filter(Boolean))) as string[];
+            const threadMap = new Map();
+            data.items.forEach((item: any) => {
+              if (item.thread_id && !threadMap.has(item.thread_id)) {
+                threadMap.set(item.thread_id, item.query);
+              }
+            });
+            const uniqueThreads = Array.from(threadMap.entries()).map(([id, query]) => ({ id, query }));
             setThreads(uniqueThreads);
             
             const queries = Array.from(new Set(data.items.map((item: any) => item.query))).slice(0, 10) as string[];

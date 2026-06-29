@@ -90,8 +90,8 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
               <SelectValue placeholder="Select a past chat..." />
             </SelectTrigger>
             <SelectContent>
-              {threads.map((t: string) => (
-                <SelectItem key={t} value={t}>Chat {t.substring(0, 6)}</SelectItem>
+              {threads.map((t: any) => (
+                <SelectItem key={t.id} value={t.id}>{t.query.length > 30 ? t.query.substring(0, 30) + '...' : t.query}</SelectItem>
               ))}
             </SelectContent>
           </Select>
