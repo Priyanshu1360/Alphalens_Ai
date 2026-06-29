@@ -91,7 +91,7 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
             </SelectTrigger>
             <SelectContent>
               {threads.map((t: string) => (
-                <SelectItem key={t} value={t}>Thread {t}</SelectItem>
+                <SelectItem key={t} value={t}>Chat {t.substring(0, 6)}</SelectItem>
               ))}
             </SelectContent>
           </Select>

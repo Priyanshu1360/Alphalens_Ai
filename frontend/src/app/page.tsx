@@ -128,16 +128,20 @@ export default function Home() {
     try {
       const endpoint = settings.strategy === "auto" ? "/agent-query" : "/query";
       
+      let activeThreadId = currentThread;
+      if (!activeThreadId) {
+        activeThreadId = crypto.randomUUID();
+        setCurrentThread(activeThreadId);
+      }
+      
       const payload: any = {
         query,
         mode: settings.mode,
         limit: settings.limit,
         prefetch_limit: settings.prefetch_limit,
         rerank: settings.rerank,
+        thread_id: activeThreadId,
       };
-      if (currentThread) {
-        payload.thread_id = currentThread;
-      }
 
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
