@@ -80,38 +80,17 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
       </Button>
 
       {threads && threads.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <Label className="text-base font-semibold">Saved Threads</Label>
-          <Select 
-            value={currentThread || ""} 
-            onValueChange={onSelectThread}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a past chat..." />
-            </SelectTrigger>
-            <SelectContent>
-              {threads.map((t: any) => (
-                <SelectItem key={t.id} value={t.id}>{t.query.length > 30 ? t.query.substring(0, 30) + '...' : t.query}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      <Separator />
-
-      {recentQueries && recentQueries.length > 0 && (
-        <div className="flex flex-col gap-4 mt-2">
-          <h3 className="text-sm uppercase tracking-wider font-bold text-muted-foreground px-2">Recent Queries</h3>
+        <div className="flex flex-col gap-2 mt-4">
+          <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground px-2">Recent Chats</Label>
           <div className="flex flex-col gap-1">
-            {recentQueries.map((q: string) => (
-              <Button 
-                key={q} 
-                variant="ghost" 
-                className="w-full justify-start text-left h-auto py-3 px-5 text-sm whitespace-normal rounded-xl text-muted-foreground hover:bg-[#2B283A] hover:text-white transition-colors"
-                onClick={() => onSuggestionClick(q)}
+            {threads.map((t: any) => (
+              <Button
+                key={t.id}
+                variant={currentThread === t.id ? "secondary" : "ghost"}
+                className={`w-full justify-start text-left h-auto py-3 px-4 text-sm font-medium rounded-xl transition-colors overflow-hidden ${currentThread === t.id ? 'bg-[#2B283A] text-white' : 'text-muted-foreground hover:bg-[#1E1C2A] hover:text-white'}`}
+                onClick={() => onSelectThread(t.id)}
               >
-                {q}
+                <div className="truncate w-full">{t.query}</div>
               </Button>
             ))}
           </div>
