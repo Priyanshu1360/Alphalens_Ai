@@ -80,21 +80,20 @@ export default function Sidebar({ settings, setSettings, onNewChat, threads, cur
       </Button>
 
       {threads && threads.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <Label className="text-base font-semibold">Saved Threads</Label>
-          <Select 
-            value={currentThread || ""} 
-            onValueChange={onSelectThread}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a past chat..." />
-            </SelectTrigger>
-            <SelectContent>
-              {threads.map((t: string) => (
-                <SelectItem key={t} value={t}>Thread {t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col gap-2 mt-2">
+          <h3 className="text-sm uppercase tracking-wider font-bold text-muted-foreground px-2">Chat History</h3>
+          <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
+            {threads.map((t: any) => (
+              <Button 
+                key={t.id} 
+                variant="ghost"
+                className={`w-full justify-start text-left h-auto py-3 px-5 text-sm rounded-xl transition-colors ${currentThread === t.id ? 'bg-[#2B283A] text-white font-semibold' : 'text-muted-foreground hover:bg-[#2B283A] hover:text-white'}`}
+                onClick={() => onSelectThread(t.id)}
+              >
+                <span className="truncate w-full">{t.title}</span>
+              </Button>
+            ))}
+          </div>
         </div>
       )}
 
