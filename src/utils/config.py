@@ -88,10 +88,10 @@ class Config:
         "EMBEDDING_FALLBACK_TO_LOCAL_ON_ERROR",
         default=True,
     )
-    EMBEDDING_BACKEND = _get_env("EMBEDDING_BACKEND", default="sentence_transformers")
+    EMBEDDING_BACKEND = _get_env("EMBEDDING_BACKEND", default="fastembed")
     EMBEDDING_MODEL = _get_env(
         "EMBEDDING_MODEL",
-        default="FinLang/finance-embeddings-investopedia",
+        default="BAAI/bge-large-en-v1.5",
     )
     EMBEDDING_NORMALIZE = _get_bool("EMBEDDING_NORMALIZE", default=True)
     EMBEDDING_DEVICE = _get_env("EMBEDDING_DEVICE", default="cpu")
